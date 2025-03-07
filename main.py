@@ -193,7 +193,7 @@ criterion = nn.MSELoss()
 #Adam converges faster than SGD
 #SGD usage might me safer in general
 #Both work well if weitht_decay term (added to loss function) from interval [0.005;0.001]
-#Learing rate at most 10^(-4) - otherwise we can expect numerical errors
+#Learing rate at most 10^(-4) (around 10^(-6) ideally)- otherwise we can expect numerical errors
 optimizer = optim.SGD(model.parameters(), lr=1e-4, momentum=0.9, weight_decay=0.0005)
 #optimizer = optim.Adam(model.parameters(), lr=1e-4,betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0005)
 
