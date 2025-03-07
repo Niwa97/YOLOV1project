@@ -1,0 +1,101 @@
+Epoch 0
+Epoch [1/50], Loss: 0.0890
+Epoch 1
+Epoch [2/50], Loss: 0.0674
+Epoch 2
+Epoch [3/50], Loss: 0.0579
+Epoch 3
+Epoch [4/50], Loss: 0.0524
+Epoch 4
+Epoch [5/50], Loss: 0.0485
+Epoch 5
+Epoch [6/50], Loss: 0.0455
+Epoch 6
+Epoch [7/50], Loss: 0.0429
+Epoch 7
+Epoch [8/50], Loss: 0.0407
+Epoch 8
+Epoch [9/50], Loss: 0.0388
+Epoch 9
+Epoch [10/50], Loss: 0.0370
+Epoch 10
+Epoch [11/50], Loss: 0.0353
+Epoch 11
+Epoch [12/50], Loss: 0.0338
+Epoch 12
+Epoch [13/50], Loss: 0.0323
+Epoch 13
+Epoch [14/50], Loss: 0.0310
+Epoch 14
+Epoch [15/50], Loss: 0.0297
+Epoch 15
+Epoch [16/50], Loss: 0.0285
+Epoch 16
+Epoch [17/50], Loss: 0.0275
+Epoch 17
+Epoch [18/50], Loss: 0.0265
+Epoch 18
+Epoch [19/50], Loss: 0.0255
+Epoch 19
+Epoch [20/50], Loss: 0.0246
+Epoch 20
+Epoch [21/50], Loss: 0.0237
+Epoch 21
+Epoch [22/50], Loss: 0.0228
+Epoch 22
+Epoch [23/50], Loss: 0.0220
+Epoch 23
+Epoch [24/50], Loss: 0.0212
+Epoch 24
+Epoch [25/50], Loss: 0.0204
+Epoch 25
+Epoch [26/50], Loss: 0.0197
+Epoch 26
+Epoch [27/50], Loss: 0.0191
+Epoch 27
+Epoch [28/50], Loss: 0.0184
+Epoch 28
+Epoch [29/50], Loss: 0.0178
+Epoch 29
+Epoch [30/50], Loss: 0.0172
+Epoch 30
+Epoch [31/50], Loss: 0.0166
+Epoch 31
+Epoch [32/50], Loss: 0.0161
+Epoch 32
+Epoch [33/50], Loss: 0.0156
+Epoch 33
+Epoch [34/50], Loss: 0.0151
+Epoch 34
+Epoch [35/50], Loss: 0.0146
+Epoch 35
+Epoch [36/50], Loss: 0.0141
+Epoch 36
+Epoch [37/50], Loss: 0.0137
+Epoch 37
+Epoch [38/50], Loss: 0.0133
+Epoch 38
+Epoch [39/50], Loss: 0.0129
+Epoch 39
+Epoch [40/50], Loss: 0.0125
+Epoch 40
+Epoch [41/50], Loss: 0.0121
+Epoch 41
+Epoch [42/50], Loss: 0.0117
+Epoch 42
+Epoch [43/50], Loss: 0.0114
+Epoch 43
+Epoch [44/50], Loss: 0.0111
+Epoch 44
+Epoch [45/50], Loss: 0.0108
+Epoch 45
+Epoch [46/50], Loss: 0.0104
+Epoch 46
+Epoch [47/50], Loss: 0.0101
+Epoch 47
+Epoch [48/50], Loss: 0.0099
+Epoch 48
+Epoch [49/50], Loss: 0.0096
+Epoch 49
+Epoch [50/50], Loss: 0.0093
+Test Loss: 0.0053
