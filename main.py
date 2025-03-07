@@ -186,15 +186,16 @@ model = YOLOv1().to("cuda")
 #For VOC2012 simple L^2 norm is working a faster than YoloLoss and for testing reasons work fine but for application reasons standard error criterion will definitely not suffice
 # ( on test data loss function can be around 3 - needed 0.03)
 #Mean square error seems to be a better than L^1
-#Yolo loss should provide at least 3 or 4 orders of magintude better results
+#Yolo loss should provide at least 3 or 4 orders of magintude better results - starts with higter values but is decreasing faster as well
 criterion = nn.MSELoss() 
 #criterion = YOLOLoss().to("cuda")
 
 #Adam converges faster than SGD
 #SGD usage might me safer in general
 #Both work well if weitht_decay term (added to loss function) from interval [0.005;0.001]
-optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.0005)
-#optimizer = optim.Adam(model.parameters(), lr=0.001,betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0005)
+#Learing rate at most 10^(-4) - otherwise we can expect numerical errors
+optimizer = optim.SGD(model.parameters(), lr=1e-4, momentum=0.9, weight_decay=0.0005)
+#optimizer = optim.Adam(model.parameters(), lr=1e-4,betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0005)
 
 #number of epoch should be around 50 -  increasing it does not provide with muuch additional gain
 num_epochs = 50
