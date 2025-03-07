@@ -183,9 +183,10 @@ test_dataloader = DataLoader(YOLODataset(VOC_IMAGE_PATH, YOLO_LABELS_PATH, trans
 #GPU calculations are necessary - CPUs caclulations are extremally slow
 model = YOLOv1().to("cuda")
 
-#For VOC2012 simple L^2 norm is working well  and is a faster than YoloLoss( on test data loss function can be around 0.01)
-#Mean square error seems to be better than L^1 
-#Both do not provide with result accurate enough for real world applications - Yolo loss should provide at least 2 orders of magintude better results
+#For VOC2012 simple L^2 norm is working a faster than YoloLoss and for testing reasons work fine but for application reasons standard error criterion will definitely not suffice
+# ( on test data loss function can be around 3 - needed 0.03)
+#Mean square error seems to be a better than L^1
+#Yolo loss should provide at least 3 or 4 orders of magintude better results
 criterion = nn.MSELoss() 
 #criterion = YOLOLoss().to("cuda")
 
