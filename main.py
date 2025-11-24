@@ -4,12 +4,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as transforms
-import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image
 from tqdm import tqdm
-from torchvision import models
-
 #Transforming VOC2012 classes to YOLO format - data set with 20 classes
 VOC_CLASSES = [
     "aeroplane", "bicycle", "bird", "boat", "bottle",
@@ -17,12 +14,10 @@ VOC_CLASSES = [
     "diningtable", "dog", "horse", "motorbike", "person",
     "pottedplant", "sheep", "sofa", "train", "tvmonitor"
 ]
-
-#Paths set for google collab enfironment
-VOC_ANNOTATIONS_PATH = "/content/sample_data/VOCdevkit/VOC2012/Annotations"  
-YOLO_LABELS_PATH = "/content/sample_data/VOCdevkit/VOC2012/labels" 
+#Paths set for google collab environment
+VOC_ANNOTATIONS_PATH = "/content/sample_data/VOCdevkit/VOC2012/Annotations"
+YOLO_LABELS_PATH = "/content/sample_data/VOCdevkit/VOC2012/labels"
 VOC_IMAGE_PATH = "/content/sample_data/VOCdevkit/VOC2012/JPEGImages"
-
 
 os.makedirs(YOLO_LABELS_PATH, exist_ok=True)
 
@@ -54,16 +49,6 @@ def convert_voc_to_yolo(xml_file, output_txt):
 
             f.write(f"{class_id} {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}\n")
 
-
-xml_files = [f for f in os.listdir(VOC_ANNOTATIONS_PATH) if f.endswith(".xml")]
-
-for xml_file in tqdm(xml_files, desc="Converting VOC 2012 → YOLO Format"):
-    xml_path = os.path.join(VOC_ANNOTATIONS_PATH, xml_file)
-    txt_output = os.path.join(YOLO_LABELS_PATH, xml_file.replace(".xml", ".txt"))
-    convert_voc_to_yolo(xml_path, txt_output)
-
-print("Pascal VOC 2012 annotations converted to YOLO format successfully!")
-
 #Implementation of YOLO v1 model  
 #The model is implemented as a subclass of torch.nn.Module
 #Implemented according to "You Only Look Once:Unified, Real-Time Object Detection", Joseph Redmon, Santosh Divvala, Ross Girshick, Ali Farhadi
@@ -75,7 +60,6 @@ class YOLOv1(nn.Module):
         super(YOLOv1, self).__init__()
 #Convolutional layer to extract image data
 #LeakyReLU recommended for sparse training (that is f(x) = x, x >= 0 and 0.1x x <0)
-#filter sizes varying from 1 to 3
         self.conv_layers = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
             nn.LeakyReLU(0.1),
@@ -107,7 +91,6 @@ class YOLOv1(nn.Module):
         x = self.fully_connected(x)
         return x.view(-1, 7, 7, 30)
 
-#Preprocessing part
 transform = transforms.Compose([
     transforms.Resize((448, 448)),
     transforms.ToTensor(),
@@ -115,111 +98,186 @@ transform = transforms.Compose([
 
 #Transforms images data to YOLOv1 output
 class YOLODataset(Dataset):
-    def __init__(self, img_dir, label_dir, transform=None):
+    def __init__(self, img_dir, label_dir, transform=None, S=7, C=20):
         self.img_dir = img_dir
         self.label_dir = label_dir
         self.transform = transform
         self.img_files = [f for f in os.listdir(img_dir) if f.endswith(".jpg")]
+        self.S = S
+        self.C = C
 
     def __len__(self):
         return len(self.img_files)
-    #Loads the label data from YOLO label files, assigns the box information and places it into the grid cell
-    #Object and class presence considered as data in labels
+#Loads the label data from YOLO label files, assigns the box information and places it into the grid cell
+#Object and class presence considered as data in labels
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.img_files[idx])
         label_path = os.path.join(self.label_dir, self.img_files[idx].replace(".jpg", ".txt"))
         image = Image.open(img_path).convert("RGB")
         if self.transform:
             image = self.transform(image)
-        labels = torch.zeros((7, 7, 30))  
-        with open(label_path, 'r') as f:
-            for line in f.readlines():
-                parts = line.strip().split()
-                class_id = int(parts[0])
-                x_center = float(parts[1])
-                y_center = float(parts[2])
-                width = float(parts[3])
-                height = float(parts[4])
-                grid_x = int(x_center * 7)
-                grid_y = int(y_center * 7)
-                labels[grid_y, grid_x, 0] = x_center
-                labels[grid_y, grid_x, 1] = y_center
-                labels[grid_y, grid_x, 2] = width
-                labels[grid_y, grid_x, 3] = height
-                labels[grid_y, grid_x, 4] = 1  
-                labels[grid_y, grid_x, 5 + class_id] = 1  
+        labels = torch.zeros((self.S, self.S, 5 + self.C))
+
+        if os.path.exists(label_path):
+            with open(label_path, 'r') as f:
+                for line in f.readlines():
+                    parts = line.strip().split()
+                    if len(parts) != 5:
+                        continue
+                    class_id = int(parts[0])
+                    x_center = float(parts[1])
+                    y_center = float(parts[2])
+                    width = float(parts[3])
+                    height = float(parts[4])
+
+                    grid_x = int(x_center * self.S)
+                    grid_y = int(y_center * self.S)
+         
+                    grid_x = min(self.S - 1, max(0, grid_x))
+                    grid_y = min(self.S - 1, max(0, grid_y))
+
+                    labels[grid_y, grid_x, 0] = x_center
+                    labels[grid_y, grid_x, 1] = y_center
+                    labels[grid_y, grid_x, 2] = width
+                    labels[grid_y, grid_x, 3] = height
+                    labels[grid_y, grid_x, 4] = 1.0
+                    labels[grid_y, grid_x, 5 + class_id] = 1.0 
+
         return image, labels
 
 #Loss function prepared for YOLO models
-#In v1/v2 version loss function is fairly simple new version uses much more sophisticated approach
-#We sum three loss terms (5 in paper): 
+#In v1/v2 version loss function is fairly simple - new versions uses much more sophisticated approach
+#We sum three main loss terms:
 #Localization loss - Control errors in box predictions, penalizes bad localization of center of cells and inaccurate height and width.
 #Confidence loss - Controllss the confidence of the most accurate box and tries to make confidence score close to 0
 #Classification loss - Penalize incorrect class predictions
 
 class YOLOLoss(nn.Module):
     def __init__(self, S=7, B=2, C=20):
-        super(YOLOLoss, self).__init__()
+        super().__init__()
         self.S = S
         self.B = B
         self.C = C
-        self.lambda_coord = 5
+        self.lambda_coord = 5.0
         self.lambda_noobj = 0.5
-    
+
     def forward(self, predictions, targets):
-        predictions = predictions.view(-1, self.S, self.S, (self.C + self.B * 5))
-        coord_mask = targets[..., 4] > 0  
-        noobj_mask = targets[..., 4] == 0   
-        localization_loss = self.lambda_coord * torch.sum(coord_mask.unsqueeze(-1) * (torch.square(predictions[..., :2] - targets[..., :2]) + torch.square(torch.sqrt(predictions[..., 2:4].clamp(min=1e-6)) - torch.sqrt(targets[..., 2:4].clamp(min=1e-6)))))
-        confidence_loss = torch.sum(self.lambda_noobj * noobj_mask.unsqueeze(-1) * torch.square(predictions[..., 4:5] - targets[..., 4:5]))
-        confidence_loss += torch.sum(coord_mask.unsqueeze(-1) * torch.square(predictions[..., 4:5] - targets[..., 4:5]))
-        classification_loss = torch.sum(coord_mask.unsqueeze(-1) * torch.square(predictions[..., 5:] - targets[..., 5:]))
-        loss = localization_loss + confidence_loss + classification_loss
+        N = predictions.shape[0]
+        device = predictions.device
+        preds = predictions.view(-1, self.S, self.S, self.B * 5 + self.C)
+
+        pred_boxes = preds[..., : self.B * 5].view(-1, self.S, self.S, self.B, 5)
+        pred_cls = preds[..., self.B * 5:] 
+
+        tgt_box = targets[..., :5]
+        tgt_cls = targets[..., 5:]
+
+        obj_mask = tgt_box[..., 4] > 0
+        noobj_mask = ~obj_mask
+        ious = []
+        for b in range(self.B):
+            iou = self.compute_iou(pred_boxes[..., b, :4], tgt_box[..., :4])
+            ious.append(iou)
+        ious = torch.stack(ious, dim=-1)
+
+        best_box_idx = torch.argmax(ious, dim=-1, keepdim=True)
+        best_box_mask = torch.zeros_like(ious, dtype=torch.bool).scatter_(-1, best_box_idx, True)
+        obj_mask_expanded = obj_mask.unsqueeze(-1).expand_as(best_box_mask)
+        responsible_mask = best_box_mask & obj_mask_expanded
+        resp_boxes = pred_boxes[responsible_mask].view(-1, 5)
+        tgt_resp = tgt_box[obj_mask].view(-1, 5)
+
+        if resp_boxes.numel() == 0:
+            loc_loss = torch.tensor(0.0, device=device)
+        else:
+            loc_loss = self.lambda_coord * (
+                torch.sum((resp_boxes[:, :2] - tgt_resp[:, :2]) ** 2) +
+                torch.sum((torch.sqrt(resp_boxes[:, 2:4].clamp(min=1e-6)) -
+                           torch.sqrt(tgt_resp[:, 2:4].clamp(min=1e-6))) ** 2)
+            )
+
+        conf_pred = pred_boxes[..., :, 4]
+        conf_tgt = ious.detach() * obj_mask.unsqueeze(-1).float()
+
+        conf_loss_obj = torch.sum((conf_pred[obj_mask.unsqueeze(-1).expand_as(conf_pred)] - conf_tgt[obj_mask.unsqueeze(-1).expand_as(conf_pred)]) ** 2)
+        conf_loss_noobj = self.lambda_noobj * torch.sum((conf_pred[noobj_mask.unsqueeze(-1).expand_as(conf_pred)]) ** 2)
+        
+        if obj_mask.sum() == 0:
+            cls_loss = torch.tensor(0.0, device=device)
+        else:
+            cls_loss = torch.sum((pred_cls[obj_mask] - tgt_cls[obj_mask]) ** 2)
+
+        loss = loc_loss + conf_loss_obj + conf_loss_noobj + cls_loss
         return loss
 
-dataset = DataLoader(YOLODataset(VOC_IMAGE_PATH, YOLO_LABELS_PATH, transform=transform), batch_size=16, shuffle=True)
-test_dataloader = DataLoader(YOLODataset(VOC_IMAGE_PATH, YOLO_LABELS_PATH, transform=transform), batch_size=16, shuffle=True)
+    def compute_iou(self, boxes1, boxes2):
+        """
+        boxes1: (..., 4) (x_center, y_center, w, h)
+        boxes2: (..., 4) same
+        returns IoU: (...) (broadcasting supported)
+        """
+        b1_x1 = boxes1[..., 0] - boxes1[..., 2] / 2
+        b1_y1 = boxes1[..., 1] - boxes1[..., 3] / 2
+        b1_x2 = boxes1[..., 0] + boxes1[..., 2] / 2
+        b1_y2 = boxes1[..., 1] + boxes1[..., 3] / 2
 
-#GPU calculations are necessary - CPUs caclulations are extremally slow
-model = YOLOv1().to("cuda")
+        b2_x1 = boxes2[..., 0] - boxes2[..., 2] / 2
+        b2_y1 = boxes2[..., 1] - boxes2[..., 3] / 2
+        b2_x2 = boxes2[..., 0] + boxes2[..., 2] / 2
+        b2_y2 = boxes2[..., 1] + boxes2[..., 3] / 2
 
-#For VOC2012 simple L^2 norm is working a faster than YoloLoss and for testing reasons work fine but for application reasons standard error criterion will definitely not suffice
-# ( on test data loss function can be around 3 - needed 0.03)
-#Mean square error seems to be a better than L^1
-#Yolo loss should provide at least 3 or 4 orders of magintude better results - starts with higter values but is decreasing faster as well
-criterion = nn.MSELoss() 
-#criterion = YOLOLoss().to("cuda")
+        inter_x1 = torch.max(b1_x1, b2_x1)
+        inter_y1 = torch.max(b1_y1, b2_y1)
+        inter_x2 = torch.min(b1_x2, b2_x2)
+        inter_y2 = torch.min(b1_y2, b2_y2)
+
+        inter_area = (inter_x2 - inter_x1).clamp(min=0) * (inter_y2 - inter_y1).clamp(min=0)
+        area1 = (b1_x2 - b1_x1) * (b1_y2 - b1_y1)
+        area2 = (b2_x2 - b2_x1) * (b2_y2 - b2_y1)
+        union = area1 + area2 - inter_area + 1e-6
+        return inter_area / union
+
+#cuda ususally needed - cpu calculations are extremally slow
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+model = YOLOv1().to(device)
+
+#Yolo loss should provide at least 3 or 4 orders of magintude better results than any standard error metric
+criterion = YOLOLoss().to(device)
+
+train_loader = DataLoader(YOLODataset(VOC_IMAGE_PATH, YOLO_LABELS_PATH, transform=transform), batch_size=16, shuffle=True)
+test_loader = DataLoader(YOLODataset(VOC_IMAGE_PATH, YOLO_LABELS_PATH, transform=transform), batch_size=16, shuffle=True)
 
 #Adam converges faster than SGD
 #SGD usage might me safer in general
 #Both work well if weitht_decay term (added to loss function) from interval [0.005;0.001]
 #Learing rate at most 10^(-4) (around 10^(-6) ideally)- otherwise we can expect numerical errors
 optimizer = optim.SGD(model.parameters(), lr=1e-4, momentum=0.9, weight_decay=0.0005)
-#optimizer = optim.Adam(model.parameters(), lr=1e-4,betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0005)
 
 #number of epoch should be around 50 -  increasing it does not provide with muuch additional gain
 num_epochs = 50
-#num_epochs = 100
 
 for epoch in range(num_epochs):
-    print(f"Epoch {epoch}")
+    print(f"Epoch {epoch+1}/{num_epochs}")
     model.train()
-    epoch_loss = 0
-    for images, labels in dataset:
-        images, labels = images.to("cuda"), labels.to("cuda")
+    epoch_loss = 0.0
+    for images, labels in tqdm(train_loader, desc="train"):
+        images = images.to(device)
+        labels = labels.to(device)
         optimizer.zero_grad()
-        predictions = model(images)
-        loss = criterion(predictions, labels)
+        predictions = model(images)  # (N,7,7,30)
+        loss = criterion(predictions, labels)  # labels: (N,7,7,25)
         loss.backward()
         optimizer.step()
         epoch_loss += loss.item()
-    print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+    print(f"Train Loss: {epoch_loss:.4f}")
 
 model.eval()
-test_loss = 0
+test_loss = 0.0
 with torch.no_grad():
-    for images, labels in test_dataloader:
-        images, labels = images.to("cuda"), labels.to("cuda")
+    for images, labels in tqdm(test_loader, desc="test"):
+        images = images.to(device)
+        labels = labels.to(device)
         predictions = model(images)
         loss = criterion(predictions, labels)
         test_loss += loss.item()
