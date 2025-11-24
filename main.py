@@ -7,6 +7,10 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import random
+
 #Transforming VOC2012 classes to YOLO format - data set with 20 classes
 VOC_CLASSES = [
     "aeroplane", "bicycle", "bird", "boat", "bottle",
@@ -234,8 +238,45 @@ class YOLOLoss(nn.Module):
         inter_area = (inter_x2 - inter_x1).clamp(min=0) * (inter_y2 - inter_y1).clamp(min=0)
         area1 = (b1_x2 - b1_x1) * (b1_y2 - b1_y1)
         area2 = (b2_x2 - b2_x1) * (b2_y2 - b2_y1)
-        union = area1 + area2 - inter_area + 1e-6
-        return inter_area / union
+        union = area1 + area2 - inter_area + 1e-9 #division by zero handling
+        return inter_area / union 
+
+
+def visualize_yolo_prediction(image, label, pred, class_names):
+
+    image_np = image.permute(1,2,0).cpu().numpy()
+    H, W = image_np.shape[:2]
+
+    fig, ax = plt.subplots(1, figsize=(8,8))
+    ax.imshow(image_np)
+    ax.set_title("Actual (Green) vs Predicted (Red)")
+
+    for gy in range(7):
+        for gx in range(7):
+            if label[gy, gx, 4] > 0.5:
+                x, y, w, h = label[gy, gx, :4]
+                cls = torch.argmax(label[gy, gx, 5:]).item()
+                cls_name = class_names[cls]
+                xc, yc = x * W, y * H
+                bw, bh = w * W, h * H
+                x0, y0 = xc - bw/2, yc - bh/2
+                rect = patches.Rectangle((x0, y0), bw, bh, linewidth=2, edgecolor='green', facecolor='none')
+                ax.add_patch(rect)
+                ax.text(x0, y0-5, cls_name, color='green')
+                
+        for gx in range(7):
+            if pred[gy, gx, 4] > 0.3:
+                x, y, w, h = pred[gy, gx, :4]
+                cls = torch.argmax(pred[gy, gx, 5:]).item()
+                cls_name = class_names[cls]
+                conf = pred[gy, gx, 4].item()
+                xc, yc = x * W, y * H
+                bw, bh = w * W, h * H
+                x0, y0 = xc - bw/2, yc - bh/2
+                rect = patches.Rectangle((x0, y0), bw, bh, linewidth=2, edgecolor='red', facecolor='none')
+                ax.add_patch(rect)
+                ax.text(x0, y0-5, f"{cls_name} ({conf:.2f})", color='red')
+    plt.show()
 
 #cuda ususally needed - cpu calculations are extremally slow
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -265,8 +306,8 @@ for epoch in range(num_epochs):
         images = images.to(device)
         labels = labels.to(device)
         optimizer.zero_grad()
-        predictions = model(images)  # (N,7,7,30)
-        loss = criterion(predictions, labels)  # labels: (N,7,7,25)
+        predictions = model(images)
+        loss = criterion(predictions, labels) 
         loss.backward()
         optimizer.step()
         epoch_loss += loss.item()
@@ -279,6 +320,21 @@ with torch.no_grad():
         images = images.to(device)
         labels = labels.to(device)
         predictions = model(images)
+        predictions = torch.sigmoid(predictions) # to reduce risk of nan values
+        predictions = predictions.clamp(1e-6, 1-1e-6)
         loss = criterion(predictions, labels)
         test_loss += loss.item()
+
+        if shown < 6:
+            idx = random.randint(0, images.size(0)-1)
+
+            visualize_yolo_prediction(
+                image=images[idx].cpu(),
+                label=labels[idx].cpu(),
+                pred=predictions[idx].cpu(),
+                class_names=VOC_CLASSES
+            )
+            shown += 1
+            
 print(f"Test Loss: {test_loss:.4f}")
+
