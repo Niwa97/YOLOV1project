@@ -289,10 +289,10 @@ test_loader = DataLoader(YOLODataset(VOC_IMAGE_PATH, YOLO_LABELS_PATH, transform
 #SGD usage might me safer in general
 #Both work well if weitht_decay term (added to loss function) from interval [0.005;0.001]
 #Learing rate at most 10^(-4) (around 10^(-6) ideally)- otherwise we can expect numerical errors
-optimizer = optim.SGD(model.parameters(), lr=1e-4, momentum=0.9, weight_decay=0.0005)
+optimizer = optim.Adam(model.parameters(), lr=1e-6, weight_decay=0.0005)
 
-#number of epochs should be around 100 -  increasing it does not provide much better results
-num_epochs = 100
+#number of epochs should be around 100/120 - increasing it does not provide much better results
+num_epochs = 120
 
 for epoch in range(num_epochs):
     print(f"Epoch {epoch+1}/{num_epochs}")
@@ -317,8 +317,6 @@ with torch.no_grad():
         images = images.to(device)
         labels = labels.to(device)
         predictions = model(images)
-        predictions = torch.sigmoid(predictions) # lowering LR for stability
-        predictions = predictions.clamp(1e-6, 1-1e-6)
         loss = criterion(predictions, labels)
         test_loss += loss.item()
 
@@ -334,6 +332,7 @@ with torch.no_grad():
             shown += 1
             
 print(f"Test Loss: {test_loss:.4f}")
+
 
 
 
