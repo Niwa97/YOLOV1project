@@ -291,8 +291,8 @@ test_loader = DataLoader(YOLODataset(VOC_IMAGE_PATH, YOLO_LABELS_PATH, transform
 #Learing rate at most 10^(-4) (around 10^(-6) ideally)- otherwise we can expect numerical errors
 optimizer = optim.SGD(model.parameters(), lr=1e-4, momentum=0.9, weight_decay=0.0005)
 
-#number of epoch should be around 50 -  increasing it does not provide with muuch additional gain
-num_epochs = 50
+#number of epoch should be around 60/70 -  increasing it does not provide with muuch additional gain
+num_epochs = 70
 
 for epoch in range(num_epochs):
     print(f"Epoch {epoch+1}/{num_epochs}")
@@ -311,6 +311,7 @@ for epoch in range(num_epochs):
 
 model.eval()
 test_loss = 0.0
+shown = 0
 with torch.no_grad():
     for images, labels in tqdm(test_loader, desc="test"):
         images = images.to(device)
@@ -333,6 +334,7 @@ with torch.no_grad():
             shown += 1
             
 print(f"Test Loss: {test_loss:.4f}")
+
 
 
 
