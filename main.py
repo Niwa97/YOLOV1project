@@ -213,13 +213,9 @@ class YOLOLoss(nn.Module):
 
         loss = loc_loss + conf_loss_obj + conf_loss_noobj + cls_loss
         return loss
-
+        
+# Calculating intersection over union metric
     def compute_iou(self, boxes1, boxes2):
-        """
-        boxes1: (..., 4) (x_center, y_center, w, h)
-        boxes2: (..., 4) same
-        returns IoU: (...) (broadcasting supported)
-        """
         b1_x1 = boxes1[..., 0] - boxes1[..., 2] / 2
         b1_y1 = boxes1[..., 1] - boxes1[..., 3] / 2
         b1_x2 = boxes1[..., 0] + boxes1[..., 2] / 2
@@ -337,5 +333,6 @@ with torch.no_grad():
             shown += 1
             
 print(f"Test Loss: {test_loss:.4f}")
+
 
 
