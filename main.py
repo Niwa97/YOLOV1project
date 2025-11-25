@@ -320,7 +320,7 @@ with torch.no_grad():
         images = images.to(device)
         labels = labels.to(device)
         predictions = model(images)
-        predictions = torch.sigmoid(predictions) # to reduce risk of nan values
+        predictions = torch.sigmoid(predictions) # lowering LR for stability
         predictions = predictions.clamp(1e-6, 1-1e-6)
         loss = criterion(predictions, labels)
         test_loss += loss.item()
@@ -337,4 +337,5 @@ with torch.no_grad():
             shown += 1
             
 print(f"Test Loss: {test_loss:.4f}")
+
 
