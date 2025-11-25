@@ -7,3 +7,4 @@ def unzip_7z(archive_path, extract_to):
 
 zip_path = "/content/drive/MyDrive/VOCdevkit.7z"
 extract_to = "/content/sample_data"  
+unzip_7z(zip_path, extract_to)
